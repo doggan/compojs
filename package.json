@@ -29,5 +29,8 @@
   "jshintConfig": {
     "node": true,
     "unused": true
+  },
+  "dependencies": {
+    "inherits": "^2.0.1"
   }
 }
