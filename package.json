@@ -5,7 +5,7 @@
   "description": "Component-based engine.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/mocha/bin/mocha --reporter spec"
   },
   "keywords": [
     "game",
@@ -31,6 +31,11 @@
     "unused": true
   },
   "dependencies": {
+    "foreach": "^2.0.5",
     "inherits": "^2.0.1"
+  },
+  "devDependencies": {
+    "chai": "^1.9.1",
+    "mocha": "^1.20.1"
   }
 }
