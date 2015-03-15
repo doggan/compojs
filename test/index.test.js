@@ -1,69 +1,148 @@
+/*jshint expr:true */
+
 var expect = require('chai').expect,
-    Engine = require('../index').Engine,
-    Entity = require('../index').Entity,
-    Component = require('../index').Component,
-    inherits = require('inherits');
+    componentEngine = require('../index');
 
-describe('Engine', function() {
-    it('should run and emit update events', function(done) {
-        var engine = new Engine();
+describe('basic functionality', function() {
+    it('should add and get components', function(done) {
+        var engine = componentEngine.createEngine()
+            .registerComponent('dummy1', function() {
+                return {};
+            })
+            .registerComponent('dummy2', function() {
+                return {};
+            });
 
-        var expectedFrameCount;
+        var entity = engine.createEntity()
+            .addComponent('dummy1')
+            .addComponent('dummy2');
+
+        expect(entity.getComponent('dummy1')).to.exist;
+        expect(entity.getComponent('dummy2')).to.exist;
+        expect(entity.getComponent('unknown')).to.not.exist;
+
+        done();
+    });
+
+    it('should update all components', function(done) {
+        var engine = componentEngine.createEngine()
+            .registerComponent('dummy_updateable', function() {
+                return {
+                    start: function() {
+                        startCount++;
+                    },
+                    update: function() {
+                        updateCount++;
+                    }
+                };
+            });
+
+        engine.createEntity()
+            .addComponent('dummy_updateable');
+
+        var startCount = 0;
         var updateCount = 0;
-        var lateUpdateCount = 0;
 
-        engine.on('update', function() {
-            expect(engine.time.frameCount).to.equal(expectedFrameCount);
-            updateCount++;
-        });
-        engine.on('lateUpdate', function() {
-            expect(engine.time.frameCount).to.equal(expectedFrameCount);
-            lateUpdateCount++;
-        });
+        expect(engine.time.frameCount).to.equal(0);
+        expect(startCount).to.equal(0);
+        expect(updateCount).to.equal(0);
+        engine.tick();
+        expect(engine.time.frameCount).to.equal(1);
+        expect(startCount).to.equal(1);
+        expect(updateCount).to.equal(1);
+        engine.tick();
+        expect(engine.time.frameCount).to.equal(2);
+        expect(startCount).to.equal(1);
+        expect(updateCount).to.equal(2);
 
-        expectedFrameCount = 0;
+        done();
+    });
+
+    it('should run the engine', function(done) {
+        var engine = componentEngine.createEngine();
+
+        expect(engine.time.frameCount).to.equal(0);
+        engine.run();
+
+        setTimeout(function() {
+            // Any # that's greater than 1 to verify that the loop is executing.
+            var expectedMinFrameCount = 5;
+            expect(engine.time.frameCount).to.be.at.least(expectedMinFrameCount);
+
+            done();
+        }, 200);
+
+        // todo: after x seconds, verify that frame count is > some value
+
+    });
+
+    it('should destroy the entity', function(done) {
+        var engine = componentEngine.createEngine()
+            .registerComponent('dummy_updateable', function() {
+                return {
+                    update: function() {
+                        updateCount++;
+                    }
+                };
+            });
+
+        var entity = engine.createEntity()
+            .addComponent('dummy_updateable');
+
+        var updateCount = 0;
+
+        expect(updateCount).to.equal(0);
         engine.tick();
         expect(updateCount).to.equal(1);
-        expect(lateUpdateCount).to.equal(1);
 
-        expectedFrameCount = 1;
+        entity.destroy();
+
         engine.tick();
-        expect(updateCount).to.equal(2);
-        expect(lateUpdateCount).to.equal(2);
-
-        done();
-    });
-});
-
-describe('Entity', function() {
-    var engine = new Engine();
-
-    it('should be able to add and get components', function(done) {
-        var entity = new Entity(engine);
-
-        expect(entity.getComponent('InvalidComponent')).to.not.exist;
-
-        function FooComponent(entity) {
-            Component.call(this, entity);
-        }
-        inherits(FooComponent, Component);
-
-        function BarComponent(entity) {
-            Component.call(this, entity);
-        }
-        inherits(BarComponent, Component);
-
-        var fooComponent = new FooComponent(entity);
-        var barComponent = new BarComponent(entity);
-        entity.addComponent(fooComponent);
-        entity.addComponent(barComponent);
-
-        expect(entity.getComponent('InvalidComponent')).to.not.exist;
-        expect(entity.getComponent('FooComponent')).to.equal(fooComponent);
-        expect(entity.getComponent('BarComponent')).to.equal(barComponent);
+        expect(updateCount).to.equal(1);
 
         done();
     });
 
-    it('should be able to send and receive')
+    it('should send and receive signals', function(done) {
+        var engine = componentEngine.createEngine()
+            .registerComponent('dummy1', function() {
+                return {
+                    onTestSignal: function(param) {
+                        signalCount++;
+                        expect(param).to.equal(paramVal);
+                    }
+                };
+            });
+
+        var entity = engine.createEntity()
+            .addComponent('dummy1');
+        var component = entity.getComponent('dummy1');
+
+        var signalCount = 0;
+        var paramVal = 1337;
+
+        entity.sendSignal('test_event', paramVal);
+        expect(signalCount).to.equal(0);
+
+        entity.addSignalListener('test_event', component.onTestSignal);
+        entity.sendSignal('test_event', paramVal);
+        expect(signalCount).to.equal(1);
+
+        entity.sendSignal('test_event', paramVal);
+        expect(signalCount).to.equal(2);
+
+        entity.removeSignalListener('test_event', component.onTestSignal);
+        entity.sendSignal('test_event', paramVal);
+        expect(signalCount).to.equal(2);
+
+        entity.addSignalListener('test_event', component.onTestSignal);
+        entity.sendSignal('test_event', paramVal);
+        expect(signalCount).to.equal(3);
+
+        entity.destroy();
+        entity.sendSignal('test_event', paramVal);
+        expect(signalCount).to.equal(3);
+
+        done();
+    });
 });
