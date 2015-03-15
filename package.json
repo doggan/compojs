@@ -26,13 +26,9 @@
     "url": "http://shy.am"
   },
   "license": "MIT",
-  "jshintConfig": {
-    "node": true,
-    "unused": true
-  },
   "dependencies": {
     "foreach": "^2.0.5",
-    "inherits": "^2.0.1"
+    "lodash.foreach": "^3.0.1"
   },
   "devDependencies": {
     "chai": "^1.9.1",
