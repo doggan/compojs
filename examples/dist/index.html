@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Component Engine Examples</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #FFFFFF;
+        }
+    </style>
+    <script src="./js/pixi.js"></script>
+    <script src="./js/01/index.js"></script>
+</head>
+
+<body>
+    <script>
+        // create a renderer instance
+        var renderer = PIXI.autoDetectRenderer(400, 300);
+
+        // add the renderer view element to the DOM
+        document.body.appendChild(renderer.view);
+
+        var activeEngine = Example1_startEngine(renderer);
+
+        // TODO: on change example, shutdown active engine and start new engine
+        // if (activeEngine) {
+        //     activeEngine.shutdown();
+        // }
+    </script>
+
+</body>
+
+</html>

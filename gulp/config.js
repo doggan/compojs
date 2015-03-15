@@ -10,7 +10,7 @@ module.exports = {
         // bundle config in the list below
         bundleConfigs: [{
             entries: './examples/01/index.js',
-            dest: './examples/dist/01',
+            dest: './examples/dist/js/01',
             outputName: 'index.js',
             // list of externally available modules to exclude from the bundle
             external: []
