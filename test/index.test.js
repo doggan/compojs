@@ -142,4 +142,19 @@ describe('basic functionality', function() {
 
         done();
     });
+
+    it('should find entities by name', function(done) {
+        var engine = componentEngine.createEngine();
+        var entity = engine.createEntity('hoge');
+
+        var hoge = engine.findEntity('hoge');
+        expect(hoge).to.exist;
+        expect(hoge).to.equal(entity);
+        expect(hoge.name).to.equal('hoge');
+
+        var unknown = engine.findEntity('unknown');
+        expect(unknown).to.not.exist;
+
+        done();
+    });
 });
