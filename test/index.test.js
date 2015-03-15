@@ -71,9 +71,6 @@ describe('basic functionality', function() {
 
             done();
         }, 200);
-
-        // todo: after x seconds, verify that frame count is > some value
-
     });
 
     it('should destroy the entity', function(done) {
