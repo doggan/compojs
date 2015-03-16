@@ -1,7 +1,6 @@
 {
-  "name": "component-engine",
-  "private": true,
-  "version": "0.0.0",
+  "name": "compojs",
+  "version": "0.1.0",
   "description": "A lightweight entity-component system.",
   "main": "index.js",
   "scripts": {
@@ -16,13 +15,13 @@
     "unity",
     "unity3d"
   ],
-  "homepage": "https://github.com/doggan/component-engine",
+  "homepage": "https://github.com/doggan/compojs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/doggan/component-engine.git"
+    "url": "https://github.com/doggan/compojs.git"
   },
   "bugs": {
-    "url": "https://github.com/doggan/component-engine/issues"
+    "url": "https://github.com/doggan/compojs/issues"
   },
   "author": {
     "name": "Shyam Guthikonda",
