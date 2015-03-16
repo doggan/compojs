@@ -7,6 +7,7 @@
         body {
             padding: 0;
             background-color: #FFFFFF;
+            font-family: 'Open Sans', sans-serif;
         }
 
         canvas {
@@ -18,18 +19,35 @@
             margin-right: auto;
             display: block;
         }
+
+        h1,h2,h3 {
+            text-align: center;
+        }
+        h2 {
+            margin-bottom: 0;
+        }
+        h3 {
+            margin-top: 4px;
+        }
     </style>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
     <script src="./js/pixi.js"></script>
     <script src="./js/01/index.js"></script>
 </head>
 
 <body>
+    <h1>Example 01</h1>
+    <div id="canvas"></div>
+    <h2>Controls</h2>
+    <h3>arrow keys (or WASD) to move.<br>
+    mouse button to fire.</h3>
+
     <script>
         // create a renderer instance
         var renderer = PIXI.autoDetectRenderer(400, 300);
 
         // add the renderer view element to the DOM
-        document.body.appendChild(renderer.view);
+        document.getElementById('canvas').appendChild(renderer.view);
 
         var activeEngine = Example1_startEngine(renderer);
 
@@ -38,7 +56,6 @@
         //     activeEngine.shutdown();
         // }
     </script>
-
 </body>
 
 </html>
