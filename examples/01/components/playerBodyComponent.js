@@ -11,10 +11,11 @@ function clamp(val, min, max) {
 }
 
 module.exports = function() {
+    var self = {};
     var graphics;
 
-    var start = function() {
-        var rendererSystem = this.entity.engine.findEntity('system').getComponent('RendererComponent');
+    self.start = function() {
+        var rendererSystem = self.entity.engine.findEntity('system').getComponent('RendererComponent');
 
         var windowSize = rendererSystem.getWindowSize();
 
@@ -34,8 +35,8 @@ module.exports = function() {
     var toScale = 1.25;
     var elapsedScaleTime = 0;
     var totalScaleTime = 0.25;
-    var update = function() {
-        var dt = this.entity.engine.time.deltaTime;
+    self.update = function() {
+        var dt = self.entity.engine.time.deltaTime;
 
         // Scale animation.
         var scale;
@@ -57,7 +58,7 @@ module.exports = function() {
         graphics.scale.y = scale;
     };
 
-    var move = function(x, y) {
+    self.move = function(x, y) {
         var newX = graphics.position.x + x;
         var newY = graphics.position.y + y;
 
@@ -68,16 +69,12 @@ module.exports = function() {
         graphics.position.y = newY;
     };
 
-    return {
-        start: start,
-        update: update,
-
-        getPosition: function() {
-            return {
-                x: graphics.position.x,
-                y: graphics.position.y
-            };
-        },
-        move: move
+    self.getPosition = function() {
+        return {
+            x: graphics.position.x,
+            y: graphics.position.y
+        };
     };
+
+    return self;
 };

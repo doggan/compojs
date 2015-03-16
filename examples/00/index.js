@@ -2,12 +2,12 @@
 'use strict';
 
 window.Example0_startEngine = function(renderer) {
-    var componentEngine = require('./../../index');
+    var compo = require('./../../index');
 
     var stage = new PIXI.Stage(0x2980b9);
 
     // Register components.
-    var engine = componentEngine.createEngine()
+    var engine = compo.createEngine()
         .registerComponent('RenderComponent', function() {
             var self = {};
 

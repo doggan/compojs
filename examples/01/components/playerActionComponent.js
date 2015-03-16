@@ -3,22 +3,23 @@
 var MOVE_SPEED = 200;
 
 module.exports = function() {
+    var self = {};
     var bodyComponent;
     var inputComponent;
 
-    var start = function() {
+    self.start = function() {
         // Cache frequently used components.
-        bodyComponent = this.entity.getComponent('PlayerBodyComponent');
-        inputComponent = this.entity.getComponent('PlayerInputComponent');
+        bodyComponent = self.entity.getComponent('PlayerBodyComponent');
+        inputComponent = self.entity.getComponent('PlayerInputComponent');
     };
 
     var fireInterval = 0.1;
     var elapsedTimeSinceFire = 0;
 
-    var update = function() {
+    self.update = function() {
         var dx = 0;
         var dy = 0;
-        var dt = this.entity.engine.time.deltaTime;
+        var dt = self.entity.engine.time.deltaTime;
         if (inputComponent.isLeftDown()) {
             dx = -MOVE_SPEED;
         }
@@ -36,7 +37,7 @@ module.exports = function() {
         if (elapsedTimeSinceFire > fireInterval) {
             if (inputComponent.isMouseDown()) {
                 var currentPos = bodyComponent.getPosition();
-                this.entity.engine.createEntity()
+                self.entity.engine.createEntity()
                     .addComponent('BulletComponent', {
                         startX: currentPos.x,
                         startY: currentPos.y - 25
@@ -61,8 +62,5 @@ module.exports = function() {
         bodyComponent.move(dx * dt, dy * dt);
     };
 
-    return {
-        start: start,
-        update: update
-    };
+    return self;
 };

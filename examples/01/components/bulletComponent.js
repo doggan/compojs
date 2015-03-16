@@ -5,15 +5,14 @@ var MOVE_SPEED = 120;
 var SIZE = 2;
 
 module.exports = function(param) {
+    var self = {};
     var asteroidSystem;
     var rendererSystem;
     var graphics;
-    var self;
 
-    var start = function() {
-        self = this;
-        rendererSystem = this.entity.engine.findEntity('system').getComponent('RendererComponent');
-        asteroidSystem = this.entity.engine.findEntity('system').getComponent('AsteroidComponent');
+    self.start = function() {
+        rendererSystem = self.entity.engine.findEntity('system').getComponent('RendererComponent');
+        asteroidSystem = self.entity.engine.findEntity('system').getComponent('AsteroidComponent');
 
         graphics = new PIXI.Graphics();
 
@@ -32,8 +31,8 @@ module.exports = function(param) {
         self.entity.destroy();
     };
 
-    var update = function() {
-        var dt = this.entity.engine.time.deltaTime;
+    self.update = function() {
+        var dt = self.entity.engine.time.deltaTime;
         var newY = graphics.position.y - MOVE_SPEED * dt;
 
         // Prune.
@@ -51,8 +50,5 @@ module.exports = function(param) {
         graphics.position.y = newY;
     };
 
-    return {
-        start: start,
-        update: update
-    };
+    return self;
 };

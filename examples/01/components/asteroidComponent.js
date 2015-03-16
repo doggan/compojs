@@ -25,6 +25,7 @@ var COLORS = [
 ];
 
 module.exports = function() {
+    var self = {};
     var asteroids = [];
     var spawnXRange;
     var rendererSystem;
@@ -119,8 +120,8 @@ module.exports = function() {
         };
     }
 
-    var start = function() {
-        rendererSystem = this.entity.engine.findEntity('system').getComponent('RendererComponent');
+    self.start = function() {
+        rendererSystem = self.entity.engine.findEntity('system').getComponent('RendererComponent');
         spawnXRange = [0, rendererSystem.getWindowSize().width];
     };
 
@@ -133,8 +134,8 @@ module.exports = function() {
     var asteroidSpawnInterval = 0.2;
     var elapsedTimeSinceLastSpawn = 0;
 
-    var update = function() {
-        var dt = this.entity.engine.time.deltaTime;
+    self.update = function() {
+        var dt = self.entity.engine.time.deltaTime;
         var windowSize = rendererSystem.getWindowSize();
 
         if (elapsedTimeSinceLastSpawn > asteroidSpawnInterval) {
@@ -174,7 +175,7 @@ module.exports = function() {
      * Check collision with the asteroids and the given x/y position.
      * Returns true if there is a collision, and destroys the asteroid.
      */
-    var checkCollision = function(x, y) {
+    self.checkCollision = function(x, y) {
         for (var i = 0; i < asteroids.length; i++) {
             var asteroid = asteroids[i];
             var asteroidPos = asteroid.display.position;
@@ -185,7 +186,7 @@ module.exports = function() {
             if (distSqr < radSqr) {
                 destroyAsteroid(i);
 
-                var explosionSystem = this.entity.engine.findEntity('system').getComponent('ExplosionComponent');
+                var explosionSystem = self.entity.engine.findEntity('system').getComponent('ExplosionComponent');
                 explosionSystem.doExplosion(asteroidPos.x, asteroidPos.y, asteroid.radius * getRandomArbitrary(0.5, 2));
                 rendererSystem.doCameraShake(15 * getRandomArbitrary(0.5, 1));
 
@@ -196,10 +197,5 @@ module.exports = function() {
         return false;
     };
 
-    return {
-        start: start,
-        update: update,
-
-        checkCollision: checkCollision
-    };
+    return self;
 };

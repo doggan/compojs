@@ -19,15 +19,16 @@ function getRandomInt(min, max) {
 }
 
 module.exports = function() {
+    var self = {};
     var activeExplosions = [];
     var rendererSystem;
 
-    var start = function() {
-        rendererSystem = this.entity.engine.findEntity('system').getComponent('RendererComponent');
+    self.start = function() {
+        rendererSystem = self.entity.engine.findEntity('system').getComponent('RendererComponent');
     };
 
-    var update = function() {
-        var dt = this.entity.engine.time.deltaTime;
+    self.update = function() {
+        var dt = self.entity.engine.time.deltaTime;
 
         for (var i = 0; i < activeExplosions.length; /*i++*/ ) {
             var explosion = activeExplosions[i];
@@ -48,7 +49,7 @@ module.exports = function() {
         }
     };
 
-    var doExplosion = function(x, y, size) {
+    self.doExplosion = function(x, y, size) {
         var spokes = 8;
         var holeSize = 0.15;
         var lineWidth = 0.06;
@@ -83,10 +84,5 @@ module.exports = function() {
         });
     };
 
-    return {
-        start: start,
-        update: update,
-
-        doExplosion: doExplosion
-    };
+    return self;
 };

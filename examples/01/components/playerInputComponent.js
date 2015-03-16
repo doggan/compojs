@@ -2,13 +2,14 @@
 'use strict';
 
 module.exports = function() {
+    var self = {};
     var leftKeyDown = false;
     var rightKeyDown = false;
     var forwardKeyDown = false;
     var backwardKeyDown = false;
     var isMouseButtonDown = false;
 
-    var start = function() {
+    self.start = function() {
         // Keyboard events.
         document.addEventListener('keydown', function(event) {
             switch (event.keyCode) {
@@ -52,34 +53,31 @@ module.exports = function() {
         }, false);
 
         // Mouse events.
-        var rendererSystem = this.entity.engine.findEntity('system').getComponent('RendererComponent');
+        var rendererSystem = self.entity.engine.findEntity('system').getComponent('RendererComponent');
         rendererSystem.setMouseDownCallback(function(data) {
             isMouseButtonDown = true;
         });
     };
 
-    var update = function() {
+    self.update = function() {
         isMouseButtonDown = false;
     };
 
-    return {
-        start: start,
-        update: update,
-
-        isLeftDown: function() {
-            return leftKeyDown;
-        },
-        isRightDown: function() {
-            return rightKeyDown;
-        },
-        isForwardKeyDown: function() {
-            return forwardKeyDown;
-        },
-        isBackwardKeyDown: function() {
-            return backwardKeyDown;
-        },
-        isMouseDown: function() {
-            return isMouseButtonDown;
-        }
+    self.isLeftDown = function() {
+        return leftKeyDown;
     };
+    self.isRightDown = function() {
+        return rightKeyDown;
+    };
+    self.isForwardKeyDown = function() {
+        return forwardKeyDown;
+    };
+    self.isBackwardKeyDown = function() {
+        return backwardKeyDown;
+    };
+    self.isMouseDown = function() {
+        return isMouseButtonDown;
+    };
+
+    return self;
 };

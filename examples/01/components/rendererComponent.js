@@ -2,13 +2,14 @@
 'use strict';
 
 module.exports = function(param) {
+    var self = {};
     var renderer = param.renderer;
     var stage = new PIXI.Stage(param.clearColor);
 
     var rootObject = new PIXI.DisplayObjectContainer();
     stage.addChild(rootObject);
 
-    var getWindowSize = function() {
+    self.getWindowSize = function() {
         return {
             width: renderer.width,
             height: renderer.height
@@ -18,8 +19,8 @@ module.exports = function(param) {
     var shake = 0;
     var shakeDecay = 10.0;
 
-    var update = function() {
-        var dt = this.entity.engine.time.deltaTime;
+    self.update = function() {
+        var dt = self.entity.engine.time.deltaTime;
 
         // 'Camera' shake.
         if (shake > 0) {
@@ -35,23 +36,21 @@ module.exports = function(param) {
         renderer.render(stage);
     };
 
-    return {
-        addToStage: function(obj) {
-            rootObject.addChild(obj);
-        },
-        removeFromStage: function(obj) {
-            rootObject.removeChild(obj);
-        },
-        setMouseDownCallback: function(cb) {
-            stage.mousedown = cb;
-        },
-
-        doCameraShake: function(amount) {
-            shake = amount;
-        },
-
-        getWindowSize: getWindowSize,
-
-        update: update
+    self.addToStage = function(obj) {
+        rootObject.addChild(obj);
     };
+
+    self.removeFromStage = function(obj) {
+        rootObject.removeChild(obj);
+    };
+
+    self.setMouseDownCallback = function(cb) {
+        stage.mousedown = cb;
+    };
+
+    self.doCameraShake = function(amount) {
+        shake = amount;
+    };
+
+    return self;
 };
