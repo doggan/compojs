@@ -6,8 +6,10 @@ module.exports = function() {
     var rightKeyDown = false;
     var forwardKeyDown = false;
     var backwardKeyDown = false;
+    var isMouseButtonDown = false;
 
     var start = function() {
+        // Keyboard events.
         document.addEventListener('keydown', function(event) {
             switch (event.keyCode) {
                 case 37:
@@ -48,10 +50,21 @@ module.exports = function() {
                     break;
             }
         }, false);
+
+        // Mouse events.
+        var rendererSystem = this.entity.engine.findEntity('system').getComponent('RendererComponent');
+        rendererSystem.setMouseDownCallback(function(data) {
+            isMouseButtonDown = true;
+        });
+    };
+
+    var update = function() {
+        isMouseButtonDown = false;
     };
 
     return {
         start: start,
+        update: update,
 
         isLeftDown: function() {
             return leftKeyDown;
@@ -64,6 +77,9 @@ module.exports = function() {
         },
         isBackwardKeyDown: function() {
             return backwardKeyDown;
+        },
+        isMouseDown: function() {
+            return isMouseButtonDown;
         }
     };
 };

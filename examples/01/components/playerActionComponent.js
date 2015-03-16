@@ -12,6 +12,9 @@ module.exports = function() {
         inputComponent = this.entity.getComponent('PlayerInputComponent');
     };
 
+    var fireInterval = 0.1;
+    var elapsedTimeSinceFire = 0;
+
     var update = function() {
         var dx = 0;
         var dy = 0;
@@ -27,6 +30,23 @@ module.exports = function() {
         }
         if (inputComponent.isBackwardKeyDown()) {
             dy = MOVE_SPEED;
+        }
+
+        // Shots fired! Create a bullet entity.
+        if (elapsedTimeSinceFire > fireInterval) {
+            if (inputComponent.isMouseDown()) {
+                var currentPos = bodyComponent.getPosition();
+                this.entity.engine.createEntity()
+                    .addComponent('BulletComponent', {
+                        startX: currentPos.x,
+                        startY: currentPos.y - 25
+                    });
+
+                elapsedTimeSinceFire = 0;
+
+            }
+        } else {
+            elapsedTimeSinceFire += dt;
         }
 
         // Clamp diagonal speed.

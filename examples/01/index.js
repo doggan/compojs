@@ -8,22 +8,21 @@ window.Example1_startEngine = function(renderer) {
     var engine = componentEngine.createEngine()
         // System components.
         .registerComponent('RendererComponent', require('./components/rendererComponent'))
+        .registerComponent('AsteroidComponent', require('./components/asteroidComponent'))
         // Player components.
         .registerComponent('PlayerBodyComponent', require('./components/playerBodyComponent'))
         .registerComponent('PlayerInputComponent', require('./components/playerInputComponent'))
         .registerComponent('PlayerActionComponent', require('./components/playerActionComponent'))
-        // Asteroid components.
-        .registerComponent('AsteroidComponent', require('./components/asteroidComponent'));
-
-    engine.createEntity()
-        .addComponent('AsteroidComponent');
+        // Bullet components.
+        .registerComponent('BulletComponent', require('./components/bulletComponent'));
 
     engine.createEntity()
         .addComponent('PlayerBodyComponent')
-        .addComponent('PlayerInputComponent')
-        .addComponent('PlayerActionComponent');
+        .addComponent('PlayerActionComponent')
+        .addComponent('PlayerInputComponent');
 
     engine.createEntity('system')
+        .addComponent('AsteroidComponent')
         .addComponent('RendererComponent', {
             renderer: renderer,
             clearColor: 0xFFFFFF

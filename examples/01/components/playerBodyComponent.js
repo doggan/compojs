@@ -44,6 +44,12 @@ module.exports = function() {
     return {
         start: start,
 
+        getPosition: function() {
+            return {
+                x: graphics.position.x,
+                y: graphics.position.y
+            };
+        },
         move: move
     };
 };

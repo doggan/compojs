@@ -124,6 +124,12 @@ module.exports = function() {
         spawnXRange = [0, rendererSystem.getWindowSize().width];
     };
 
+    var destroyAsteroid = function(asteroidIndex) {
+        var asteroid = asteroids[asteroidIndex];
+        rendererSystem.removeFromStage(asteroid.display);
+        asteroids.splice(asteroidIndex, 1);
+    };
+
     var asteroidSpawnInterval = 0.2;
     var elapsedTimeSinceLastSpawn = 0;
 
@@ -146,8 +152,7 @@ module.exports = function() {
 
             // Prune when below bottom of screen.
             if (newY > (windowSize.height + asteroid.radius)) {
-                rendererSystem.removeFromStage(asteroid.display);
-                asteroids.splice(i, 1);
+                destroyAsteroid(i);
                 continue;
             }
 
@@ -165,8 +170,32 @@ module.exports = function() {
         });
     };
 
+    /**
+     * Check collision with the asteroids and the given x/y position.
+     * Returns true if there is a collision, and destroys the asteroid.
+     */
+    var checkCollision = function(x, y) {
+        for (var i = 0; i < asteroids.length; i++) {
+            var asteroid = asteroids[i];
+            var asteroidPos = asteroid.display.position;
+            var deltaX = (asteroidPos.x - x);
+            var deltaY = (asteroidPos.y - y);
+            var distSqr = deltaX * deltaX + deltaY * deltaY;
+            var radSqr = asteroid.radius * asteroid.radius;
+            if (distSqr < radSqr) {
+                destroyAsteroid(i);
+
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     return {
         start: start,
-        update: update
+        update: update,
+
+        checkCollision: checkCollision
     };
 };

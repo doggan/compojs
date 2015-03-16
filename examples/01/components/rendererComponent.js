@@ -5,13 +5,8 @@ module.exports = function(param) {
     var renderer = param.renderer;
     var stage = new PIXI.Stage(param.clearColor);
 
-    var addToStage = function(obj) {
-        stage.addChild(obj);
-    };
 
-    var removeFromStage = function(obj) {
-        stage.removeChild(obj);
-    };
+
 
     var getWindowSize = function() {
         return {
@@ -25,8 +20,15 @@ module.exports = function(param) {
     };
 
     return {
-        addToStage: addToStage,
-        removeFromStage: removeFromStage,
+        addToStage: function(obj) {
+            stage.addChild(obj);
+        },
+        removeFromStage: function(obj) {
+            stage.removeChild(obj);
+        },
+        setMouseDownCallback: function(cb) {
+            stage.mousedown = cb;
+        },
 
         getWindowSize: getWindowSize,
 
