@@ -2,17 +2,35 @@
 <html>
 
 <head>
-    <title>Component Engine Examples</title>
+    <title>CompoJS Examples</title>
+
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+
     <style>
         body {
             padding: 0;
+            margin: 10px;
             background-color: #FFFFFF;
-            font-family: 'Open Sans', sans-serif;
+        }
+
+        #info-bar,
+        #menu-bar {
+            text-align: center;
+        }
+
+        #info-bar {
+            width: 66%;
+            margin: 15px auto;
+            border-style: solid none none none;
+            border-width: 1px;
+            border-color: #CCC;
+            padding: 10px;
         }
 
         canvas {
             border: 2px solid black;
             /* centering */
+
             padding-left: 0;
             padding-right: 0;
             margin-left: auto;
@@ -20,27 +38,49 @@
             display: block;
         }
 
-        h1,h2,h3 {
+        h1,
+        h2,
+        h3 {
             text-align: center;
         }
+
+        h1 {
+            margin-bottom: 15px;
+        }
+
         h2 {
             margin-bottom: 0;
         }
+
         h3 {
-            margin-top: 4px;
+            margin-top: 6px;
+            line-height: 1.25em;
         }
     </style>
-    <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
     <script src="./js/pixi.js"></script>
     <script src="./js/01/index.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 </head>
 
 <body>
-    <h1>Example 01</h1>
-    <div id="canvas"></div>
-    <h2>Controls</h2>
-    <h3>arrow keys (or WASD) to move.<br>
-    mouse button to fire.</h3>
+    <div id="menu-bar">
+        <div class="pure-menu pure-menu-horizontal">
+            <ul class="pure-menu-list">
+                <li id="example-0-menu-item" class="pure-menu-item"><a href="#" class="pure-menu-link" onclick="changeExample(0);">Example 0</a></li>
+                <li id="example-1-menu-item" class="pure-menu-item"><a href="#" class="pure-menu-link" onclick="changeExample(1);">Example 1</a></li>
+            </ul>
+        </div>
+    </div>
+    <div id="content">
+        <h1 id="example-title">Example 1111</h1>
+        <div id="canvas"></div>
+        <h2 id="controls-title">Controls</h2>
+        <div id="controls-desc">
+        </div>
+    </div>
+    <div id="info-bar">
+        <a class="pure-button pure-button-primary" href="https://github.com/doggan/component-engine" target="_blank">CompoJS on GitHub</a>
+    </div>
 
     <script>
         // create a renderer instance
@@ -49,12 +89,47 @@
         // add the renderer view element to the DOM
         document.getElementById('canvas').appendChild(renderer.view);
 
-        var activeEngine = Example1_startEngine(renderer);
+        var activeEngine;
 
-        // TODO: on change example, shutdown active engine and start new engine
-        // if (activeEngine) {
-        //     activeEngine.shutdown();
-        // }
+        window.changeExample = function(num) {
+            if (activeEngine) {
+                // TODO: shutdown
+                console.log('shutdown');
+            }
+
+            var menuItemIds = [
+                '#example-0-menu-item',
+                '#example-1-menu-item'
+            ];
+
+            // Remove selected class.
+            for (var i = 0; i < menuItemIds.length; i++) {
+                $(menuItemIds[i]).removeClass('pure-menu-selected');
+            }
+
+            switch (num) {
+                case 0:
+                    $(menuItemIds[num]).addClass('pure-menu-selected');
+                    $("#example-title").text('Example 0');
+                    $('#controls-title').hide();
+                    $('#controls-desc').hide();
+                    activeEngine = Example1_startEngine(renderer);
+                    break;
+                case 1:
+                    $(menuItemIds[num]).addClass('pure-menu-selected');
+                    $("#example-title").text('Example 1');
+                    $('#controls-title').show();
+                    $('#controls-desc').show().html(
+                        '<h3>arrow keys (or WASD) to move.<br>mouse button to fire.</h3>'
+                    );
+                    activeEngine = Example1_startEngine(renderer);
+                    break;
+            }
+        };
+
+        $(document).ready(function() {
+            changeExample(0);
+        });
     </script>
 </body>
 
