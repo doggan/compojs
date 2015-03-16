@@ -9,6 +9,7 @@ window.Example1_startEngine = function(renderer) {
         // System components.
         .registerComponent('RendererComponent', require('./components/rendererComponent'))
         .registerComponent('AsteroidComponent', require('./components/asteroidComponent'))
+        .registerComponent('ExplosionComponent', require('./components/explosionComponent'))
         // Player components.
         .registerComponent('PlayerBodyComponent', require('./components/playerBodyComponent'))
         .registerComponent('PlayerInputComponent', require('./components/playerInputComponent'))
@@ -23,6 +24,7 @@ window.Example1_startEngine = function(renderer) {
 
     engine.createEntity('system')
         .addComponent('AsteroidComponent')
+        .addComponent('ExplosionComponent')
         .addComponent('RendererComponent', {
             renderer: renderer,
             clearColor: 0xFFFFFF

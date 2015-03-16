@@ -185,6 +185,9 @@ module.exports = function() {
             if (distSqr < radSqr) {
                 destroyAsteroid(i);
 
+                var explosionSystem = this.entity.engine.findEntity('system').getComponent('ExplosionComponent');
+                explosionSystem.doExplosion(asteroidPos.x, asteroidPos.y, asteroid.radius * getRandomArbitrary(0.5, 2));
+
                 return true;
             }
         }
