@@ -90,14 +90,7 @@
         // add the renderer view element to the DOM
         document.getElementById('canvas').appendChild(renderer.view);
 
-        var activeEngine;
-
         window.changeExample = function(num) {
-            if (activeEngine) {
-                // TODO: shutdown
-                console.log('shutdown');
-            }
-
             var menuItemIds = [
                 '#example-0-menu-item',
                 '#example-1-menu-item'
@@ -114,7 +107,7 @@
                     $("#example-title").text('Example 0');
                     $('#controls-title').hide();
                     $('#controls-desc').hide();
-                    activeEngine = Example0_startEngine(renderer);
+                    Example0_startEngine(renderer);
                     break;
                 case 1:
                     $(menuItemIds[num]).addClass('pure-menu-selected');
@@ -123,7 +116,7 @@
                     $('#controls-desc').show().html(
                         '<h3>arrow keys (or WASD) to move.<br>mouse button to fire.</h3>'
                     );
-                    activeEngine = Example1_startEngine(renderer);
+                    Example1_startEngine(renderer);
                     break;
             }
         };

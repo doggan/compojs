@@ -35,7 +35,7 @@ module.exports = function() {
 
         // Shots fired! Create a bullet entity.
         if (elapsedTimeSinceFire > fireInterval) {
-            if (inputComponent.isMouseDown()) {
+            if (inputComponent.isFireKeyDown()) {
                 var currentPos = bodyComponent.getPosition();
                 self.entity.engine.createEntity()
                     .addComponent('BulletComponent', {

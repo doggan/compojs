@@ -44,10 +44,6 @@ module.exports = function(param) {
         rootObject.removeChild(obj);
     };
 
-    self.setMouseDownCallback = function(cb) {
-        stage.mousedown = cb;
-    };
-
     self.doCameraShake = function(amount) {
         shake = amount;
     };

@@ -2,10 +2,10 @@
 'use strict';
 
 window.Example1_startEngine = function(renderer) {
-    var componentEngine = require('./../../index');
+    var compo = require('./../../index');
 
     // Register components.
-    var engine = componentEngine.createEngine()
+    var engine = compo.createEngine()
         // System components.
         .registerComponent('RendererComponent', require('./components/rendererComponent'))
         .registerComponent('AsteroidComponent', require('./components/asteroidComponent'))
@@ -27,10 +27,8 @@ window.Example1_startEngine = function(renderer) {
         .addComponent('ExplosionComponent')
         .addComponent('RendererComponent', {
             renderer: renderer,
-            clearColor: 0xFFFFFF
+            clearColor: 0xc0fae0
         });
 
     engine.run();
-
-    return engine;
 };

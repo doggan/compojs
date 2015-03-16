@@ -7,7 +7,7 @@ module.exports = function() {
     var rightKeyDown = false;
     var forwardKeyDown = false;
     var backwardKeyDown = false;
-    var isMouseButtonDown = false;
+    var isFireButtonDown = false;
 
     self.start = function() {
         // Keyboard events.
@@ -28,6 +28,9 @@ module.exports = function() {
                 case 40:
                 case 83:
                     backwardKeyDown = true;
+                    break;
+                case 32: // spacebar
+                    isFireButtonDown = true;
                     break;
             }
         }, false);
@@ -51,16 +54,11 @@ module.exports = function() {
                     break;
             }
         }, false);
-
-        // Mouse events.
-        var rendererSystem = self.entity.engine.findEntity('system').getComponent('RendererComponent');
-        rendererSystem.setMouseDownCallback(function(data) {
-            isMouseButtonDown = true;
-        });
     };
 
     self.update = function() {
-        isMouseButtonDown = false;
+        // Reset every frame.
+        isFireButtonDown = false;
     };
 
     self.isLeftDown = function() {
@@ -75,8 +73,8 @@ module.exports = function() {
     self.isBackwardKeyDown = function() {
         return backwardKeyDown;
     };
-    self.isMouseDown = function() {
-        return isMouseButtonDown;
+    self.isFireKeyDown = function() {
+        return isFireButtonDown;
     };
 
     return self;

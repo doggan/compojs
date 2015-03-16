@@ -87,6 +87,4 @@ window.Example0_startEngine = function(renderer) {
 
     // Go!
     engine.run();
-
-    return engine;
 };
