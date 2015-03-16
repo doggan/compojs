@@ -1,0 +1,49 @@
+{
+  "name": "component-engine",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A lightweight entity-component system.",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/mocha/bin/mocha --reporter spec"
+  },
+  "keywords": [
+    "game",
+    "engine",
+    "entity",
+    "component",
+    "gameobject",
+    "unity",
+    "unity3d"
+  ],
+  "homepage": "https://github.com/doggan/component-engine",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doggan/component-engine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/doggan/component-engine/issues"
+  },
+  "author": {
+    "name": "Shyam Guthikonda",
+    "url": "http://shy.am"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "lodash.foreach": "^3.0.1"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.2.4",
+    "browserify": "^9.0.3",
+    "chai": "^1.9.1",
+    "gulp": "^3.8.11",
+    "gulp-notify": "^2.2.0",
+    "gulp-util": "^3.0.4",
+    "lodash": "^3.5.0",
+    "mocha": "^1.20.1",
+    "pretty-hrtime": "^1.0.0",
+    "require-dir": "^0.1.0",
+    "vinyl-source-stream": "^1.1.0",
+    "watchify": "^2.4.0"
+  }
+}
