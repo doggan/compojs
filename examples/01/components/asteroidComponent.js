@@ -187,6 +187,7 @@ module.exports = function() {
 
                 var explosionSystem = this.entity.engine.findEntity('system').getComponent('ExplosionComponent');
                 explosionSystem.doExplosion(asteroidPos.x, asteroidPos.y, asteroid.radius * getRandomArbitrary(0.5, 2));
+                rendererSystem.doCameraShake(15 * getRandomArbitrary(0.5, 1));
 
                 return true;
             }

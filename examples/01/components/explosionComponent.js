@@ -1,8 +1,8 @@
 /* global PIXI */
 'use strict';
 
-var SCALE_RATE = 300.0;
-var LIFETIME = 0.15;
+var SCALE_RATE = 350.0;
+var LIFETIME = 0.175;
 var ROTATION_RATE = 500 * Math.PI / 180;
 
 var COLORS = [
