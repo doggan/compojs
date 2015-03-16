@@ -4,15 +4,31 @@
 window.Example0_startEngine = function(renderer) {
     var componentEngine = require('./../../index');
 
+    var stage = new PIXI.Stage(0x2980b9);
+
     // Register components.
     var engine = componentEngine.createEngine()
-        .registerComponent('DefaultComponent', function() {
-            var $compo = {};
+        .registerComponent('RenderComponent', function() {
+            var self = {};
 
-            var stage = new PIXI.Stage(0x2980b9);
+            self.update = function() {
+                renderer.render(stage);
+            };
+
+            return self;
+        })
+        .registerComponent('SpinningShapeComponent', function(param) {
+            var self = {};
 
             var colors = [0x00FFFF, 0xFF0000, 0x00FF00, 0x0000FF];
             var colorIndex = 0;
+
+            var square = new PIXI.Graphics();
+            var container = new PIXI.DisplayObjectContainer();
+            container.addChild(square);
+            container.position.x = param.startX;
+            container.position.y = param.startY;
+            stage.addChild(container);
 
             var rebuildSquare = function() {
                 square.clear();
@@ -23,18 +39,11 @@ window.Example0_startEngine = function(renderer) {
                 square.pivot.y = 25;
             };
 
-            var square = new PIXI.Graphics();
-            var container = new PIXI.DisplayObjectContainer();
-            container.addChild(square);
-            container.position.x = 200;
-            container.position.y = 150;
-            stage.addChild(container);
-
             rebuildSquare();
 
             var elapsedTime = 0;
-            $compo.update = function() {
-                var dt = $compo.entity.engine.time.deltaTime;
+            self.update = function() {
+                var dt = self.entity.engine.time.deltaTime;
 
                 // Random color changes.
                 if (elapsedTime > 1.0) {
@@ -51,16 +60,30 @@ window.Example0_startEngine = function(renderer) {
 
                 // Rotation.
                 square.rotation += 1.5 * dt;
-
-                renderer.render(stage);
             };
 
-            return $compo;
+            return self;
         });
 
-    // Create entity.
+    // Create our renderer.
     engine.createEntity()
-        .addComponent('DefaultComponent');
+        .addComponent('RenderComponent');
+
+    // Create some entities.
+    var entityPositions = [
+        [100, 100],
+        [300, 100],
+        [100, 200],
+        [300, 200],
+        [200, 150]
+    ];
+    for (var i = 0; i < entityPositions.length; i++) {
+        engine.createEntity()
+            .addComponent('SpinningShapeComponent', {
+                startX: entityPositions[i][0],
+                startY: entityPositions[i][1]
+            });
+    }
 
     // Go!
     engine.run();
