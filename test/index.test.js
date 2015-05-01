@@ -1,11 +1,11 @@
 /*jshint expr:true */
 
 var expect = require('chai').expect,
-    componentEngine = require('../index');
+    compo = require('../index');
 
 describe('basic functionality', function() {
     it('should add and get components', function(done) {
-        var engine = componentEngine.createEngine()
+        var engine = compo.createEngine()
             .registerComponent('dummy1', function() {
                 return {};
             })
@@ -25,7 +25,7 @@ describe('basic functionality', function() {
     });
 
     it('should update all components', function(done) {
-        var engine = componentEngine.createEngine()
+        var engine = compo.createEngine()
             .registerComponent('dummy_updateable', function() {
                 return {
                     start: function() {
@@ -59,7 +59,7 @@ describe('basic functionality', function() {
     });
 
     it('should run the engine', function(done) {
-        var engine = componentEngine.createEngine();
+        var engine = compo.createEngine();
 
         expect(engine.time.frameCount).to.equal(0);
         engine.run();
@@ -74,7 +74,7 @@ describe('basic functionality', function() {
     });
 
     it('should destroy the entity', function(done) {
-        var engine = componentEngine.createEngine()
+        var engine = compo.createEngine()
             .registerComponent('dummy_updateable', function() {
                 return {
                     update: function() {
@@ -101,7 +101,7 @@ describe('basic functionality', function() {
     });
 
     it('should send and receive signals', function(done) {
-        var engine = componentEngine.createEngine()
+        var engine = compo.createEngine()
             .registerComponent('dummy1', function() {
                 return {
                     onTestSignal: function(param) {
@@ -144,7 +144,7 @@ describe('basic functionality', function() {
     });
 
     it('should find entities by name', function(done) {
-        var engine = componentEngine.createEngine();
+        var engine = compo.createEngine();
         var entity = engine.createEntity('hoge');
 
         var hoge = engine.findEntity('hoge');
