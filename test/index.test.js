@@ -3,7 +3,7 @@
 var expect = require('chai').expect,
     compo = require('../index');
 
-describe('basic functionality', function() {
+describe('basic engine / entity / component functionality', function() {
     it('should add and get components', function(done) {
         var engine = compo.createEngine()
             .registerComponent('dummy1', function() {
@@ -154,6 +154,56 @@ describe('basic functionality', function() {
 
         var unknown = engine.findEntity('unknown');
         expect(unknown).to.not.exist;
+
+        done();
+    });
+
+    it('should update components in the correct order', function(done) {
+        var updateCount = 0;
+
+        var engine = compo.createEngine()
+            .registerComponent('compo_A', function() {
+                return {
+                    update: function() {
+                        expect(updateCount === 0 ||
+                               updateCount === 1).to.be.true;
+                        updateCount++;
+                    }
+                };
+            })
+            .registerComponent('compo_B', function() {
+                return {
+                    update: function() {
+                        expect(updateCount === 2 ||
+                               updateCount === 3).to.be.true;
+                        updateCount++;
+                    }
+                };
+            })
+            .registerComponent('compo_C', function() {
+                return {
+                    update: function() {
+                        expect(updateCount === 4 ||
+                               updateCount === 5).to.be.true;
+                        updateCount++;
+                    }
+                };
+            });
+
+        // Components should be updated in the order:
+        //   -> A, A, B, B, C, C
+        // ...due to the above registration order.
+        engine.createEntity()
+            .addComponent('compo_C')
+            .addComponent('compo_B')
+            .addComponent('compo_A');
+        engine.createEntity()
+            .addComponent('compo_C')
+            .addComponent('compo_B')
+            .addComponent('compo_A');
+
+        engine.tick();
+        expect(updateCount).to.equal(2 * 3);    // 2 entities * 3 components per entity
 
         done();
     });
