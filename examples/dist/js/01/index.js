@@ -13,8 +13,8 @@ window.Example1_startEngine = function(renderer) {
         .registerComponent('ExplosionComponent', require('./components/explosionComponent'))
         // Player components.
         .registerComponent('PlayerBodyComponent', require('./components/playerBodyComponent'))
-        .registerComponent('PlayerInputComponent', require('./components/playerInputComponent'))
         .registerComponent('PlayerActionComponent', require('./components/playerActionComponent'))
+        .registerComponent('PlayerInputComponent', require('./components/playerInputComponent'))
         // Bullet components.
         .registerComponent('BulletComponent', require('./components/bulletComponent'));
 
@@ -715,6 +715,13 @@ function Engine() {
         loopFunc(run);
     };
 
+    var componentFactory = [];
+    var componentsToCreate = [];
+
+    var componentBucketIndices = [];
+    var componentInitializationBuckets = [];
+    var componentUpdateBuckets = [];
+
     /**
      * Perform a single tick of engine execution.
      * Useful for tests. Usually, Engine.run() is preferred.
@@ -724,18 +731,22 @@ function Engine() {
         var now = Date.now() / 1000;
         time.deltaTime = now - prevTime;
 
-        // Update all entities.
-        foreach(entities, function(entity) {
-            entity.update();
-        });
-
-        // Destroy enemies.
+        // Destroy entities.
         // Entity destruction is queued and processed here
         // to prevent issues when entities destroy themselves in their
         // update method.
+        // We handle destruction of entities BEFORE update to prevent
+        // queued destroyed entities from being updated 1 extra time.
         foreach(entitiesToDestroy, function(entity) {
             for (var i = 0; i < entities.length; i++) {
                 if (entities[i] === entity) {
+                    // Destroy all components belonging to this entity.
+                    for (var j = 0; j < entity._components.length; j++) {
+                        destroyComponent(entity._componentNames[j], entity._components[j]);
+                    }
+                    entity._components.length = 0;
+                    entity._componentNames.length = 0;
+
                     entities.splice(i, 1);
                     break;
                 }
@@ -743,11 +754,46 @@ function Engine() {
         });
         entitiesToDestroy = [];
 
+        // Handle queued component creation.
+        // We delay the bucket insertion of components to prevent issue when
+        // one entity creates another entity in its update method. If we don't delay
+        // the execution, the newly created component will be updated immediately
+        // and its initialization will not have executed.
+        foreach(componentsToCreate, function(componentInfo) {
+            var bucketIndex = componentBucketIndices[componentInfo.componentName];
+
+            // Add ALL components to the initialization list.
+            componentInitializationBuckets[bucketIndex].push(componentInfo.component);
+
+            // Add updateable components to correct list.
+            if (typeof componentInfo.component.update === 'function') {
+                componentUpdateBuckets[bucketIndex].push(componentInfo.component);
+            }
+        });
+        componentsToCreate = [];
+
+        // Initialize all components added this frame.
+        foreach(componentInitializationBuckets, function(bucket) {
+            foreach(bucket, function(component) {
+                if (typeof component.start === 'function') {
+                    component.start();
+                }
+            });
+
+            // Clear out all entries (initialization only needs to be run once).
+            bucket.length = 0;
+        });
+
+        // Update all components in order.
+        foreach(componentUpdateBuckets, function(bucket) {
+            foreach(bucket, function(component) {
+                component.update();
+            });
+        });
+
         time.frameCount += 1;
         prevTime = now;
     };
-
-    var componentFactory = [];
 
     /**
      * Registers a component. All components must be registered
@@ -756,6 +802,13 @@ function Engine() {
     var registerComponent = function(componentName, componentCreator) {
         if (!componentFactory.hasOwnProperty(componentName)) {
             componentFactory[componentName] = componentCreator;
+
+            // Allocate a bucket index for this component type.
+            // Component registration order dictates update and initialization order.
+            var bucketIndex = componentInitializationBuckets.length;
+            componentBucketIndices[componentName] = bucketIndex;
+            componentInitializationBuckets.push([]);
+            componentUpdateBuckets.push([]);
         } else {
             console.warn('Component already registered: ' + componentName);
         }
@@ -768,7 +821,47 @@ function Engine() {
             return null;
         }
 
-        return componentFactory[componentName](componentParam);
+        var component = componentFactory[componentName](componentParam);
+
+        if (component) {
+            // We QUEUE the creation of components to prevent issues when entities
+            // are dynamically created in the start/update methods of other entities.
+            componentsToCreate.push({
+                componentName: componentName,
+                component: component
+            });
+        }
+
+        return component;
+    };
+
+    var destroyComponent = function(componentName, component) {
+        var bucketIndex = componentBucketIndices[componentName];
+        var i, components;
+
+        // Remove from initialization list.
+        components = componentInitializationBuckets[bucketIndex];
+        for (i = 0; i < components.length; i++) {
+            if (components[i] === component) {
+                components.splice(i, 1);
+                break;
+            }
+        }
+        // Remove from update list.
+        components = componentUpdateBuckets[bucketIndex];
+        for (i = 0; i < components.length; i++) {
+            if (components[i] === component) {
+                components.splice(i, 1);
+                break;
+            }
+        }
+        // Remove from 'queued' component creation list.
+        for (i = 0; i < componentsToCreate.length; i++) {
+            if (componentsToCreate[i].component === component) {
+                componentsToCreate.splice(i, 1);
+                break;
+            }
+        }
     };
 
     var entities = [];
@@ -810,10 +903,10 @@ function Engine() {
         run: run,
 
         registerComponent: registerComponent,
-        createComponent: createComponent,
+        _createComponent: createComponent,
 
         createEntity: createEntity,
-        destroyEntity: destroyEntity,
+        _destroyEntity: destroyEntity,
         findEntity: findEntity
     };
 }
@@ -826,59 +919,32 @@ module.exports = function() {
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var foreach = require('lodash.foreach');
 
 function Entity(inEngine, inName) {
     var name = inName || '';
     var engine = inEngine;
     var components = [];
     var componentNames = [];
-    var updateableComponents = [];
     var eventEmitter = new EventEmitter();
-
-    var didCallStart = false;
-
-    var start = function() {
-        foreach(components, function(component) {
-            if (typeof component.start === 'function') {
-                component.start();
-            }
-        });
-
-        didCallStart = true;
-    };
 
     /**
      * Destroy entity and all attached components.
      */
     var destroy = function() {
         eventEmitter.removeAllListeners();
-        engine.destroyEntity(this);
-    };
 
-    var update = function() {
-        // Trigger 'start' on first update.
-        if (!didCallStart) {
-            start();
-        }
-
-        foreach(updateableComponents, function(component) {
-            component.update();
-        });
+        engine._destroyEntity(this);
     };
 
     /**
      * Add a component to this entity.
      */
     var addComponent = function(componentName, componentParam) {
-        var component = engine.createComponent(componentName, componentParam);
+        var component = engine._createComponent(componentName, componentParam);
         if (component) {
             component.entity = this;
             components.push(component);
             componentNames.push(componentName);
-            if (typeof component.update === 'function') {
-                updateableComponents.push(component);
-            }
         }
         return this;
     };
@@ -940,8 +1006,9 @@ function Entity(inEngine, inName) {
         engine: engine,
 
         destroy: destroy,
-        update: update,
 
+        _components: components,
+        _componentNames: componentNames,
         addComponent: addComponent,
         getComponent: getComponent,
 
@@ -955,7 +1022,7 @@ module.exports = function(engine, name) {
     return new Entity(engine, name);
 };
 
-},{"events":12,"lodash.foreach":13}],12:[function(require,module,exports){
+},{"events":12}],12:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -1260,10 +1327,10 @@ function isUndefined(arg) {
 
 },{}],13:[function(require,module,exports){
 /**
- * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.3 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -1273,12 +1340,28 @@ var arrayEach = require('lodash._arrayeach'),
     isArray = require('lodash.isarray');
 
 /**
+ * Creates a function for `_.forEach` or `_.forEachRight`.
+ *
+ * @private
+ * @param {Function} arrayFunc The function to iterate over an array.
+ * @param {Function} eachFunc The function to iterate over a collection.
+ * @returns {Function} Returns the new each function.
+ */
+function createForEach(arrayFunc, eachFunc) {
+  return function(collection, iteratee, thisArg) {
+    return (typeof iteratee == 'function' && thisArg === undefined && isArray(collection))
+      ? arrayFunc(collection, iteratee)
+      : eachFunc(collection, bindCallback(iteratee, thisArg, 3));
+  };
+}
+
+/**
  * Iterates over elements of `collection` invoking `iteratee` for each element.
- * The `iteratee` is bound to `thisArg` and invoked with three arguments;
- * (value, index|key, collection). Iterator functions may exit iteration early
+ * The `iteratee` is bound to `thisArg` and invoked with three arguments:
+ * (value, index|key, collection). Iteratee functions may exit iteration early
  * by explicitly returning `false`.
  *
- * **Note:** As with other "Collections" methods, objects with a `length` property
+ * **Note:** As with other "Collections" methods, objects with a "length" property
  * are iterated like arrays. To avoid this behavior `_.forIn` or `_.forOwn`
  * may be used for object iteration.
  *
@@ -1292,17 +1375,17 @@ var arrayEach = require('lodash._arrayeach'),
  * @returns {Array|Object|string} Returns `collection`.
  * @example
  *
- * _([1, 2, 3]).forEach(function(n) { console.log(n); }).value();
+ * _([1, 2]).forEach(function(n) {
+ *   console.log(n);
+ * }).value();
  * // => logs each value from left to right and returns the array
  *
- * _.forEach({ 'one': 1, 'two': 2, 'three': 3 }, function(n, key) { console.log(n, key); });
+ * _.forEach({ 'a': 1, 'b': 2 }, function(n, key) {
+ *   console.log(n, key);
+ * });
  * // => logs each value-key pair and returns the object (iteration order is not guaranteed)
  */
-function forEach(collection, iteratee, thisArg) {
-  return (typeof iteratee == 'function' && typeof thisArg == 'undefined' && isArray(collection))
-    ? arrayEach(collection, iteratee)
-    : baseEach(collection, bindCallback(iteratee, thisArg, 3));
-}
+var forEach = createForEach(arrayEach, baseEach);
 
 module.exports = forEach;
 
@@ -1341,19 +1424,18 @@ module.exports = arrayEach;
 
 },{}],15:[function(require,module,exports){
 /**
- * lodash 3.0.1 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.3 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
 var keys = require('lodash.keys');
 
 /**
- * Used as the maximum length of an array-like value.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength)
- * for more details.
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
  */
 var MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
 
@@ -1366,26 +1448,12 @@ var MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
  * @param {Function} iteratee The function invoked per iteration.
  * @returns {Array|Object|string} Returns `collection`.
  */
-function baseEach(collection, iteratee) {
-  var length = collection ? collection.length : 0;
-  if (!isLength(length)) {
-    return baseForOwn(collection, iteratee);
-  }
-  var index = -1,
-      iterable = toObject(collection);
-
-  while (++index < length) {
-    if (iteratee(iterable[index], index, iterable) === false) {
-      break;
-    }
-  }
-  return collection;
-}
+var baseEach = createBaseEach(baseForOwn);
 
 /**
  * The base implementation of `baseForIn` and `baseForOwn` which iterates
  * over `object` properties returned by `keysFunc` invoking `iteratee` for
- * each property. Iterator functions may exit iteration early by explicitly
+ * each property. Iteratee functions may exit iteration early by explicitly
  * returning `false`.
  *
  * @private
@@ -1394,20 +1462,7 @@ function baseEach(collection, iteratee) {
  * @param {Function} keysFunc The function to get the keys of `object`.
  * @returns {Object} Returns `object`.
  */
-function baseFor(object, iteratee, keysFunc) {
-  var index = -1,
-      iterable = toObject(object),
-      props = keysFunc(object),
-      length = props.length;
-
-  while (++index < length) {
-    var key = props[index];
-    if (iteratee(iterable[key], key, iterable) === false) {
-      break;
-    }
-  }
-  return object;
-}
+var baseFor = createBaseFor();
 
 /**
  * The base implementation of `_.forOwn` without support for callback
@@ -1423,7 +1478,84 @@ function baseForOwn(object, iteratee) {
 }
 
 /**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * Creates a `baseEach` or `baseEachRight` function.
+ *
+ * @private
+ * @param {Function} eachFunc The function to iterate over a collection.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new base function.
+ */
+function createBaseEach(eachFunc, fromRight) {
+  return function(collection, iteratee) {
+    var length = collection ? getLength(collection) : 0;
+    if (!isLength(length)) {
+      return eachFunc(collection, iteratee);
+    }
+    var index = fromRight ? length : -1,
+        iterable = toObject(collection);
+
+    while ((fromRight ? index-- : ++index < length)) {
+      if (iteratee(iterable[index], index, iterable) === false) {
+        break;
+      }
+    }
+    return collection;
+  };
+}
+
+/**
+ * Creates a base function for `_.forIn` or `_.forInRight`.
+ *
+ * @private
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new base function.
+ */
+function createBaseFor(fromRight) {
+  return function(object, iteratee, keysFunc) {
+    var iterable = toObject(object),
+        props = keysFunc(object),
+        length = props.length,
+        index = fromRight ? length : -1;
+
+    while ((fromRight ? index-- : ++index < length)) {
+      var key = props[index];
+      if (iteratee(iterable[key], key, iterable) === false) {
+        break;
+      }
+    }
+    return object;
+  };
+}
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * in Safari on iOS 8.1 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+/**
  * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
  *
  * @private
  * @param {*} value The value to check.
@@ -1445,10 +1577,8 @@ function toObject(value) {
 }
 
 /**
- * Checks if `value` is the language type of `Object`.
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
  * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * **Note:** See the [ES5 spec](https://es5.github.io/#x8) for more details.
  *
  * @static
  * @memberOf _
@@ -1470,17 +1600,17 @@ function isObject(value) {
   // Avoid a V8 JIT bug in Chrome 19-20.
   // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
   var type = typeof value;
-  return type == 'function' || (value && type == 'object') || false;
+  return type == 'function' || (!!value && type == 'object');
 }
 
 module.exports = baseEach;
 
 },{"lodash.keys":16}],16:[function(require,module,exports){
 /**
- * lodash 3.0.4 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.6 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.8.2 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -1501,9 +1631,8 @@ var propertyIsEnumerable = objectProto.propertyIsEnumerable;
 var nativeKeys = isNative(nativeKeys = Object.keys) && nativeKeys;
 
 /**
- * Used as the maximum length of an array-like value.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
- * for more details.
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
  */
 var MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
 
@@ -1517,6 +1646,12 @@ var MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
 var support = {};
 
 (function(x) {
+  var Ctor = function() { this.x = x; },
+      object = { '0': x, 'length': x },
+      props = [];
+
+  Ctor.prototype = { 'valueOf': x, 'y': x };
+  for (var key in new Ctor) { props.push(key); }
 
   /**
    * Detect if `arguments` object indexes are non-enumerable.
@@ -1524,8 +1659,8 @@ var support = {};
    * In Firefox < 4, IE < 9, PhantomJS, and Safari < 5.1 `arguments` object
    * indexes are non-enumerable. Chrome < 25 and Node.js < 0.11.0 treat
    * `arguments` object indexes as non-enumerable and fail `hasOwnProperty`
-   * checks for indexes that exceed their function's formal parameters with
-   * associated values of `0`.
+   * checks for indexes that exceed the number of function parameters and
+   * whose associated argument values are `0`.
    *
    * @memberOf _.support
    * @type boolean
@@ -1535,7 +1670,7 @@ var support = {};
   } catch(e) {
     support.nonEnumArgs = true;
   }
-}(0, 0));
+}(1, 0));
 
 /**
  * Checks if `value` is a valid array-like index.
@@ -1554,9 +1689,7 @@ function isIndex(value, length) {
 /**
  * Checks if `value` is a valid array-like length.
  *
- * **Note:** This function is based on ES `ToLength`. See the
- * [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength)
- * for more details.
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
  *
  * @private
  * @param {*} value The value to check.
@@ -1571,7 +1704,7 @@ function isLength(value) {
  * own enumerable property names of `object`.
  *
  * @private
- * @param {Object} object The object to inspect.
+ * @param {Object} object The object to query.
  * @returns {Array} Returns the array of property names.
  */
 function shimKeys(object) {
@@ -1595,10 +1728,8 @@ function shimKeys(object) {
 }
 
 /**
- * Checks if `value` is the language type of `Object`.
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
  * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
- *
- * **Note:** See the [ES5 spec](https://es5.github.io/#x8) for more details.
  *
  * @static
  * @memberOf _
@@ -1620,7 +1751,7 @@ function isObject(value) {
   // Avoid a V8 JIT bug in Chrome 19-20.
   // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
   var type = typeof value;
-  return type == 'function' || (value && type == 'object') || false;
+  return type == 'function' || (!!value && type == 'object');
 }
 
 /**
@@ -1633,7 +1764,7 @@ function isObject(value) {
  * @static
  * @memberOf _
  * @category Object
- * @param {Object} object The object to inspect.
+ * @param {Object} object The object to query.
  * @returns {Array} Returns the array of property names.
  * @example
  *
@@ -1656,7 +1787,7 @@ var keys = !nativeKeys ? shimKeys : function(object) {
         length = object.length;
   }
   if ((typeof Ctor == 'function' && Ctor.prototype === object) ||
-      (typeof object != 'function' && (length && isLength(length)))) {
+      (typeof object != 'function' && isLength(length))) {
     return shimKeys(object);
   }
   return isObject(object) ? nativeKeys(object) : [];
@@ -1670,7 +1801,7 @@ var keys = !nativeKeys ? shimKeys : function(object) {
  * @static
  * @memberOf _
  * @category Object
- * @param {Object} object The object to inspect.
+ * @param {Object} object The object to query.
  * @returns {Array} Returns the array of property names.
  * @example
  *
@@ -1717,10 +1848,10 @@ module.exports = keys;
 
 },{"lodash.isarguments":17,"lodash.isarray":20,"lodash.isnative":18}],17:[function(require,module,exports){
 /**
- * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.2 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -1736,28 +1867,28 @@ var argsTag = '[object Arguments]';
  * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
  */
 function isObjectLike(value) {
-  return (value && typeof value == 'object') || false;
+  return !!value && typeof value == 'object';
 }
 
 /** Used for native method references. */
 var objectProto = Object.prototype;
 
 /**
- * Used to resolve the `toStringTag` of values.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
- * for more details.
+ * Used to resolve the [`toStringTag`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
+ * of values.
  */
 var objToString = objectProto.toString;
 
 /**
- * Used as the maximum length of an array-like value.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength)
- * for more details.
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
  */
 var MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
 
 /**
  * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
  *
  * @private
  * @param {*} value The value to check.
@@ -1777,7 +1908,7 @@ function isLength(value) {
  * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
  * @example
  *
- * (function() { return _.isArguments(arguments); })();
+ * _.isArguments(function() { return arguments; }());
  * // => true
  *
  * _.isArguments([1, 2, 3]);
@@ -1785,17 +1916,17 @@ function isLength(value) {
  */
 function isArguments(value) {
   var length = isObjectLike(value) ? value.length : undefined;
-  return (isLength(length) && objToString.call(value) == argsTag) || false;
+  return isLength(length) && objToString.call(value) == argsTag;
 }
 
 module.exports = isArguments;
 
 },{}],18:[function(require,module,exports){
 /**
- * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.2 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -1803,16 +1934,16 @@ module.exports = isArguments;
 /** `Object#toString` result references. */
 var funcTag = '[object Function]';
 
-/** Used to detect host constructors (Safari > 5). */
-var reHostCtor = /^\[object .+?Constructor\]$/;
-
 /**
- * Used to match `RegExp` special characters.
- * See this [article on `RegExp` characters](http://www.regular-expressions.info/characters.html#special)
- * for more details.
+ * Used to match `RegExp` [special characters](http://www.regular-expressions.info/characters.html#special).
+ * In addition to special characters the forward slash is escaped to allow for
+ * easier `eval` use and `Function` compilation.
  */
 var reRegExpChars = /[.*+?^${}()|[\]\/\\]/g,
     reHasRegExpChars = RegExp(reRegExpChars.source);
+
+/** Used to detect host constructors (Safari > 5). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
 
 /**
  * Converts `value` to a string if it is not one. An empty string is returned
@@ -1837,7 +1968,7 @@ function baseToString(value) {
  * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
  */
 function isObjectLike(value) {
-  return (value && typeof value == 'object') || false;
+  return !!value && typeof value == 'object';
 }
 
 /** Used for native method references. */
@@ -1847,14 +1978,13 @@ var objectProto = Object.prototype;
 var fnToString = Function.prototype.toString;
 
 /**
- * Used to resolve the `toStringTag` of values.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
- * for more details.
+ * Used to resolve the [`toStringTag`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
+ * of values.
  */
 var objToString = objectProto.toString;
 
 /** Used to detect if a method is native. */
-var reNative = RegExp('^' +
+var reIsNative = RegExp('^' +
   escapeRegExp(objToString)
   .replace(/toString|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
 );
@@ -1880,14 +2010,14 @@ function isNative(value) {
     return false;
   }
   if (objToString.call(value) == funcTag) {
-    return reNative.test(fnToString.call(value));
+    return reIsNative.test(fnToString.call(value));
   }
-  return (isObjectLike(value) && reHostCtor.test(value)) || false;
+  return isObjectLike(value) && reIsHostCtor.test(value);
 }
 
 /**
- * Escapes the `RegExp` special characters "\", "^", "$", ".", "|", "?", "*",
- * "+", "(", ")", "[", "]", "{" and "}" in `string`.
+ * Escapes the `RegExp` special characters "\", "/", "^", "$", ".", "|", "?",
+ * "*", "+", "(", ")", "[", "]", "{" and "}" in `string`.
  *
  * @static
  * @memberOf _
@@ -1897,7 +2027,7 @@ function isNative(value) {
  * @example
  *
  * _.escapeRegExp('[lodash](https://lodash.com/)');
- * // => '\[lodash\]\(https://lodash\.com/\)'
+ * // => '\[lodash\]\(https:\/\/lodash\.com\/\)'
  */
 function escapeRegExp(string) {
   string = baseToString(string);
@@ -1910,10 +2040,10 @@ module.exports = isNative;
 
 },{}],19:[function(require,module,exports){
 /**
- * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -1932,7 +2062,7 @@ function bindCallback(func, thisArg, argCount) {
   if (typeof func != 'function') {
     return identity;
   }
-  if (typeof thisArg == 'undefined') {
+  if (thisArg === undefined) {
     return func;
   }
   switch (argCount) {
@@ -1965,6 +2095,7 @@ function bindCallback(func, thisArg, argCount) {
  * @example
  *
  * var object = { 'user': 'fred' };
+ *
  * _.identity(object) === object;
  * // => true
  */
@@ -1976,10 +2107,10 @@ module.exports = bindCallback;
 
 },{}],20:[function(require,module,exports){
 /**
- * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * lodash 3.0.2 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
  * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
- * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  * Available under MIT license <https://lodash.com/license>
  */
@@ -1988,16 +2119,16 @@ module.exports = bindCallback;
 var arrayTag = '[object Array]',
     funcTag = '[object Function]';
 
-/** Used to detect host constructors (Safari > 5). */
-var reHostCtor = /^\[object .+?Constructor\]$/;
-
 /**
- * Used to match `RegExp` special characters.
- * See this [article on `RegExp` characters](http://www.regular-expressions.info/characters.html#special)
- * for more details.
+ * Used to match `RegExp` [special characters](http://www.regular-expressions.info/characters.html#special).
+ * In addition to special characters the forward slash is escaped to allow for
+ * easier `eval` use and `Function` compilation.
  */
 var reRegExpChars = /[.*+?^${}()|[\]\/\\]/g,
     reHasRegExpChars = RegExp(reRegExpChars.source);
+
+/** Used to detect host constructors (Safari > 5). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
 
 /**
  * Converts `value` to a string if it is not one. An empty string is returned
@@ -2022,7 +2153,7 @@ function baseToString(value) {
  * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
  */
 function isObjectLike(value) {
-  return (value && typeof value == 'object') || false;
+  return !!value && typeof value == 'object';
 }
 
 /** Used for native method references. */
@@ -2032,14 +2163,13 @@ var objectProto = Object.prototype;
 var fnToString = Function.prototype.toString;
 
 /**
- * Used to resolve the `toStringTag` of values.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
- * for more details.
+ * Used to resolve the [`toStringTag`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
+ * of values.
  */
 var objToString = objectProto.toString;
 
 /** Used to detect if a method is native. */
-var reNative = RegExp('^' +
+var reIsNative = RegExp('^' +
   escapeRegExp(objToString)
   .replace(/toString|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
 );
@@ -2048,14 +2178,15 @@ var reNative = RegExp('^' +
 var nativeIsArray = isNative(nativeIsArray = Array.isArray) && nativeIsArray;
 
 /**
- * Used as the maximum length of an array-like value.
- * See the [ES spec](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength)
- * for more details.
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
  */
 var MAX_SAFE_INTEGER = Math.pow(2, 53) - 1;
 
 /**
  * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
  *
  * @private
  * @param {*} value The value to check.
@@ -2078,11 +2209,11 @@ function isLength(value) {
  * _.isArray([1, 2, 3]);
  * // => true
  *
- * (function() { return _.isArray(arguments); })();
+ * _.isArray(function() { return arguments; }());
  * // => false
  */
 var isArray = nativeIsArray || function(value) {
-  return (isObjectLike(value) && isLength(value.length) && objToString.call(value) == arrayTag) || false;
+  return isObjectLike(value) && isLength(value.length) && objToString.call(value) == arrayTag;
 };
 
 /**
@@ -2106,14 +2237,14 @@ function isNative(value) {
     return false;
   }
   if (objToString.call(value) == funcTag) {
-    return reNative.test(fnToString.call(value));
+    return reIsNative.test(fnToString.call(value));
   }
-  return (isObjectLike(value) && reHostCtor.test(value)) || false;
+  return isObjectLike(value) && reIsHostCtor.test(value);
 }
 
 /**
- * Escapes the `RegExp` special characters "\", "^", "$", ".", "|", "?", "*",
- * "+", "(", ")", "[", "]", "{" and "}" in `string`.
+ * Escapes the `RegExp` special characters "\", "/", "^", "$", ".", "|", "?",
+ * "*", "+", "(", ")", "[", "]", "{" and "}" in `string`.
  *
  * @static
  * @memberOf _
@@ -2123,7 +2254,7 @@ function isNative(value) {
  * @example
  *
  * _.escapeRegExp('[lodash](https://lodash.com/)');
- * // => '\[lodash\]\(https://lodash\.com/\)'
+ * // => '\[lodash\]\(https:\/\/lodash\.com\/\)'
  */
 function escapeRegExp(string) {
   string = baseToString(string);

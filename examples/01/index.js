@@ -12,8 +12,8 @@ window.Example1_startEngine = function(renderer) {
         .registerComponent('ExplosionComponent', require('./components/explosionComponent'))
         // Player components.
         .registerComponent('PlayerBodyComponent', require('./components/playerBodyComponent'))
-        .registerComponent('PlayerInputComponent', require('./components/playerInputComponent'))
         .registerComponent('PlayerActionComponent', require('./components/playerActionComponent'))
+        .registerComponent('PlayerInputComponent', require('./components/playerInputComponent'))
         // Bullet components.
         .registerComponent('BulletComponent', require('./components/bulletComponent'));
 
