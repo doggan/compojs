@@ -28,9 +28,6 @@ describe('basic engine / entity / component functionality', function() {
         var engine = compo.createEngine()
             .registerComponent('dummy_updateable', function() {
                 return {
-                    awake: function() {
-                        awakeCount++;
-                    },
                     start: function() {
                         startCount++;
                     },
@@ -43,22 +40,18 @@ describe('basic engine / entity / component functionality', function() {
         engine.createEntity()
             .addComponent('dummy_updateable');
 
-        var awakeCount = 0;
         var startCount = 0;
         var updateCount = 0;
 
         expect(engine.time.frameCount).to.equal(0);
-        expect(awakeCount).to.equal(0);
         expect(startCount).to.equal(0);
         expect(updateCount).to.equal(0);
         engine.tick();
         expect(engine.time.frameCount).to.equal(1);
-        expect(awakeCount).to.equal(1);
         expect(startCount).to.equal(1);
         expect(updateCount).to.equal(1);
         engine.tick();
         expect(engine.time.frameCount).to.equal(2);
-        expect(awakeCount).to.equal(1);
         expect(startCount).to.equal(1);
         expect(updateCount).to.equal(2);
 
